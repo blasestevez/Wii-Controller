@@ -1,6 +1,6 @@
 using System.Net.Sockets;
 using System.Buffers.Binary;
-using wiimotedsu.console;
+using wiimotedsu.core;
 
 var udpClient = new UdpClient(26760);
 Console.WriteLine("Listening for UDP packets on port 26760...");

@@ -1,11 +1,7 @@
-using System;
 using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using System.Runtime.Intrinsics.Arm;
 using System.Text;
 
-namespace wiimotedsu.console
+namespace wiimotedsu.core
 {
     public class DSUPacketBuilder
     {
