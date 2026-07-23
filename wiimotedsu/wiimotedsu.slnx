@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="wiimotedsu.console/wiimotedsu.console.csproj" />
+  <Project Path="wiimotedsu.core/wiimotedsu.core.csproj" />
+  <Project Path="wiimotedsu.tests/wiimotedsu.tests.csproj" />
+</Solution>
