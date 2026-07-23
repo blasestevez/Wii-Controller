@@ -1,24 +1,62 @@
-﻿namespace wiimotedsu.app
+﻿#if ANDROID
+using Android.Content;
+using Android.Net.Wifi;
+#endif
+
+namespace wiimotedsu.app
 {
     public partial class MainPage : ContentPage
     {
-        int count = 0;
+        private bool _isServerRunning = false;
 
         public MainPage()
         {
             InitializeComponent();
+
+            IpLabel.Text = $"IP Address: {GetLocalIPAddress()}";
         }
 
-        private void OnCounterClicked(object? sender, EventArgs e)
+        private void OnServerBtnClicked(object sender, EventArgs e)
         {
-            count++;
+            _isServerRunning = !_isServerRunning;
 
-            if (count == 1)
-                CounterBtn.Text = $"Clicked {count} time";
+            if (_isServerRunning)
+            { 
+                ServerBtn.Text = "Stop Server";
+                //todo: Start the server logic here
+            }
             else
-                CounterBtn.Text = $"Clicked {count} times";
+            {
+                ServerBtn.Text = "Start Server";
+                //todo: Stop the server logic here
+            }
+        }
 
-            SemanticScreenReader.Announce(CounterBtn.Text);
+        private string GetLocalIPAddress()
+        {
+#if ANDROID
+        try 
+        {
+            var context = Android.App.Application.Context;
+
+            var wifiManager = (WifiManager)context.GetSystemService(Context.WifiService);
+
+            int ipInt = wifiManager.ConnectionInfo.IpAddress;
+
+            if (ipInt != 0)
+            {
+                var ipBytes = BitConverter.GetBytes(ipInt);
+                var ipAddress = new System.Net.IPAddress(ipBytes);
+                return ipAddress.ToString();
+            }
+        }
+        catch
+        {
+
+        }
+#endif
+            return "127.0.0.1";
+
         }
     }
 }
