@@ -90,7 +90,9 @@ namespace wiimotedsu.core
             BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(8, 4), crc);
         }
 
-        public static void WriteControllerDataResponse(Span<byte> buffer, byte slotId, uint packetNumber)
+        public static void WriteControllerDataResponse(Span<byte> buffer, byte slotId, uint packetNumber, ulong timestamp,
+    float accX, float accY, float accZ,
+    float gyroPitch, float gyroYaw, float gyroRoll)
         {
             // Actual controllers data
             uint messageType = 0x100002;
@@ -170,6 +172,34 @@ namespace wiimotedsu.core
             // byte 23 "Right stick Y (plus upward)"
             byte rightStickY = 128; // Centered
             buffer[43] = rightStickY;
+
+            // bytes 24-47 "Analog D-Pad, Analog buttons, and Touches. All zeroed out."
+            buffer.Slice(44, 24).Clear();
+
+            // bytes 48-55 "Motion data timestamp in microseconds"
+            BinaryPrimitives.WriteUInt64LittleEndian(buffer.Slice(68, 8), timestamp);
+
+            // bytes 56-59 "Accelerometer X axis"
+            BinaryPrimitives.WriteSingleLittleEndian(buffer.Slice(76, 4), accX);
+
+            // bytes 60-63 "Accelerometer Y axis"
+            BinaryPrimitives.WriteSingleLittleEndian(buffer.Slice(80, 4), accY);
+
+            // bytes 64-67 "Accelerometer Z axis"
+            BinaryPrimitives.WriteSingleLittleEndian(buffer.Slice(84, 4), accZ);
+
+            // bytes 68-71 "Gyroscope pitch"
+            BinaryPrimitives.WriteSingleLittleEndian(buffer.Slice(88, 4), gyroPitch);
+
+            // bytes 72-75 "Gyroscope yaw"
+            BinaryPrimitives.WriteSingleLittleEndian(buffer.Slice(92, 4), gyroYaw);
+
+            // bytes 76-79 "Gyroscope roll"
+            BinaryPrimitives.WriteSingleLittleEndian(buffer.Slice(96, 4), gyroRoll);
+
+            // Calculate CRC32 and override bytes 8-11
+            uint crc = System.IO.Hashing.Crc32.HashToUInt32(buffer);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(8, 4), crc);
         }
     }
 }
