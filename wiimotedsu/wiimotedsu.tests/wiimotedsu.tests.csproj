@@ -18,8 +18,4 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\wiimotedsu.console\wiimotedsu.console.csproj" />
-  </ItemGroup>
-
 </Project>

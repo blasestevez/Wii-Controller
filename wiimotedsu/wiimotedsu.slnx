@@ -2,7 +2,6 @@
   <Project Path="wiimotedsu.app/wiimotedsu.app.csproj" Id="e53879a5-397e-42ba-8faf-8e92679a3d86">
     <Deploy Solution="Debug|*" />
   </Project>
-  <Project Path="wiimotedsu.console/wiimotedsu.console.csproj" />
   <Project Path="wiimotedsu.core/wiimotedsu.core.csproj" />
   <Project Path="wiimotedsu.tests/wiimotedsu.tests.csproj" />
 </Solution>
