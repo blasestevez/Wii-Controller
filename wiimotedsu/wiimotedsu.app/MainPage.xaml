@@ -1,34 +1,106 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="wiimotedsu.app.MainPage">
+             x:Class="wiimotedsu.app.MainPage"
+             Shell.NavBarIsVisible="False"
+             NavigationPage.HasNavigationBar="False"
+             BackgroundColor="#000000">
 
-    <ScrollView>
+    <Grid VerticalOptions="Fill" HorizontalOptions="Fill" Padding="20,12">
         <VerticalStackLayout
-            Spacing="25"
-            Padding="30,0"
-            VerticalOptions="Center">
+            Spacing="12"
+            VerticalOptions="Center"
+            HorizontalOptions="Fill">
 
+            <!-- Header: Info & Status -->
             <Label 
-                Text="Wiimote DSU Server"
-                SemanticProperties.HeadingLevel="Level1"
-                FontSize="32"
+                Text="Wiimote DSU"
+                FontSize="18"
+                FontAttributes="Bold"
+                TextColor="#EEEEEE"
                 HorizontalOptions="Center" />
 
             <Label
                 x:Name="IpLabel"
                 Text="Detecting IP..."
-                FontSize="18"
-                HorizontalOptions="Center" />
-
-            <Button
-                x:Name="ServerBtn"
-                Text="Launch Server"
-                SemanticProperties.Hint="Starts/Stops the server"
+                FontSize="12"
+                TextColor="#666666"
                 HorizontalOptions="Center"
-                Clicked="OnServerBtnClicked" />
-            
+                Margin="0,0,0,2" />
+
+            <!-- 1. D-Pad (Cruceta direccional) -->
+            <Grid
+                WidthRequest="180"
+                HeightRequest="180"
+                HorizontalOptions="Center"
+                RowDefinitions="60,60,60"
+                ColumnDefinitions="60,60,60">
+                <Button Grid.Row="0" Grid.Column="1" Text="▲" FontSize="20" BackgroundColor="#181818" BorderColor="#2E2E2E" BorderWidth="1" CornerRadius="8" TextColor="#FFFFFF" Pressed="OnDpadUpPressed" Released="OnDpadUpReleased" />
+                <Button Grid.Row="1" Grid.Column="0" Text="◀" FontSize="20" BackgroundColor="#181818" BorderColor="#2E2E2E" BorderWidth="1" CornerRadius="8" TextColor="#FFFFFF" Pressed="OnDpadLeftPressed" Released="OnDpadLeftReleased" />
+                <Button Grid.Row="1" Grid.Column="2" Text="▶" FontSize="20" BackgroundColor="#181818" BorderColor="#2E2E2E" BorderWidth="1" CornerRadius="8" TextColor="#FFFFFF" Pressed="OnDpadRightPressed" Released="OnDpadRightReleased" />
+                <Button Grid.Row="2" Grid.Column="1" Text="▼" FontSize="20" BackgroundColor="#181818" BorderColor="#2E2E2E" BorderWidth="1" CornerRadius="8" TextColor="#FFFFFF" Pressed="OnDpadDownPressed" Released="OnDpadDownReleased" />
+            </Grid>
+
+            <!-- 2. Gatillo B & Recenter (Barra ancha a todo el ancho) -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="15" HorizontalOptions="Fill" Margin="10,0">
+                <Button 
+                    Grid.Column="0"
+                    Text="[ B Trigger ]"
+                    FontSize="13"
+                    FontAttributes="Bold"
+                    HeightRequest="46"
+                    BackgroundColor="#1C1C1C"
+                    BorderColor="#383838"
+                    BorderWidth="1.5"
+                    CornerRadius="10"
+                    TextColor="#FFFFFF"
+                    Pressed="OnBtnBPressed"
+                    Released="OnBtnBReleased" />
+
+                <Button
+                    Grid.Column="1"
+                    Text="🎯 Recenter"
+                    FontSize="13"
+                    HeightRequest="46"
+                    BackgroundColor="#141414"
+                    BorderColor="#282828"
+                    BorderWidth="1"
+                    CornerRadius="10"
+                    TextColor="#888888"
+                    Pressed="OnBtnRecenterPressed"
+                    Released="OnBtnRecenterReleased" />
+            </Grid>
+
+            <!-- 3. Botón A (Grande y centrado estilo Wiimote) -->
+            <Button 
+                Text="A" 
+                WidthRequest="92" 
+                HeightRequest="92" 
+                CornerRadius="46" 
+                FontSize="30" 
+                FontAttributes="Bold" 
+                BackgroundColor="#161616" 
+                BorderColor="#3E3E3E"
+                BorderWidth="2"
+                TextColor="#FFFFFF" 
+                HorizontalOptions="Center"
+                Pressed="OnBtnAPressed" 
+                Released="OnBtnAReleased" />
+
+            <!-- 4. Fila Central: -, HOME, + -->
+            <Grid ColumnDefinitions="60,75,60" ColumnSpacing="15" HorizontalOptions="Center">
+                <Button Grid.Column="0" Text="-" WidthRequest="60" HeightRequest="42" FontSize="20" FontAttributes="Bold" BackgroundColor="#181818" BorderColor="#2E2E2E" BorderWidth="1" CornerRadius="21" TextColor="#CCCCCC" Pressed="OnBtnMinusPressed" Released="OnBtnMinusReleased" />
+                <Button Grid.Column="1" Text="🏠" WidthRequest="75" HeightRequest="42" FontSize="16" BackgroundColor="#06223E" BorderColor="#007ACC" BorderWidth="1.5" CornerRadius="21" TextColor="#29B6F6" Pressed="OnBtnHomePressed" Released="OnBtnHomeReleased" />
+                <Button Grid.Column="2" Text="+" WidthRequest="60" HeightRequest="42" FontSize="20" FontAttributes="Bold" BackgroundColor="#181818" BorderColor="#2E2E2E" BorderWidth="1" CornerRadius="21" TextColor="#CCCCCC" Pressed="OnBtnPlusPressed" Released="OnBtnPlusReleased" />
+            </Grid>
+
+            <!-- 5. Botones 1 y 2 en VERTICAL -->
+            <VerticalStackLayout Spacing="10" HorizontalOptions="Center">
+                <Button Text="1" WidthRequest="60" HeightRequest="60" CornerRadius="30" FontSize="22" FontAttributes="Bold" BackgroundColor="#181818" BorderColor="#333333" BorderWidth="1.5" TextColor="#FFFFFF" Pressed="OnBtn1Pressed" Released="OnBtn1Released" />
+                <Button Text="2" WidthRequest="60" HeightRequest="60" CornerRadius="30" FontSize="22" FontAttributes="Bold" BackgroundColor="#181818" BorderColor="#333333" BorderWidth="1.5" TextColor="#FFFFFF" Pressed="OnBtn2Pressed" Released="OnBtn2Released" />
+            </VerticalStackLayout>
+
         </VerticalStackLayout>
-    </ScrollView>
+    </Grid>
 
 </ContentPage>
