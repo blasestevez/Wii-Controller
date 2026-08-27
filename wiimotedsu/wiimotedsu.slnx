@@ -3,5 +3,4 @@
     <Deploy Solution="Debug|*" />
   </Project>
   <Project Path="wiimotedsu.core/wiimotedsu.core.csproj" />
-  <Project Path="wiimotedsu.tests/wiimotedsu.tests.csproj" />
 </Solution>
