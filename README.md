@@ -1,4 +1,4 @@
-# WiimoteDSU
+# Wii Controller
 
 .NET MAUI app that turns your Android phone into a Wii Remote for the Dolphin emulator.
 
