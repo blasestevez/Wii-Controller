@@ -1,9 +1,10 @@
-﻿#if ANDROID
+#if ANDROID
 using Android.Content;
 using Android.Net.Wifi;
 #endif
 
 using System.Buffers.Binary;
+using System.Collections.Concurrent;
 using System.Net.Sockets;
 using wiimotedsu.core;
 
@@ -23,8 +24,9 @@ namespace wiimotedsu.app
         private volatile byte _homeButton = 0;
         private volatile byte _touchButton = 0;
         private byte _cachedBatteryStatus = 0x05;
-        private System.Net.IPEndPoint? _connectedClient = null;
+        private readonly ConcurrentDictionary<System.Net.IPEndPoint, DateTime> _subscribers = new();
 
+        // === STATE & COMMUNICATION ===
         public MainPage()
         {
             InitializeComponent();
@@ -107,6 +109,7 @@ namespace wiimotedsu.app
             StopSensors();
             _stopwatch.Stop();
             _udpCts?.Cancel();
+            _subscribers.Clear();
         }
 
         private void Battery_BatteryInfoChanged(object? sender, BatteryInfoChangedEventArgs e)
@@ -117,15 +120,14 @@ namespace wiimotedsu.app
         private async Task StartUdpServer(CancellationToken token)
         {
             using var udpClient = new UdpClient(26760);
-
             _ = Task.Run(() => BroadcastLoop(udpClient, token));
+
             try
             {
                 while (!token.IsCancellationRequested)
                 {
                     var receivedResult = await udpClient.ReceiveAsync(token);
                     var messageType = BinaryPrimitives.ReadUInt32LittleEndian(receivedResult.Buffer.AsSpan(16, 4));
-                    _connectedClient = receivedResult.RemoteEndPoint;
 
                     if (messageType == 0x100000)
                     {
@@ -139,24 +141,42 @@ namespace wiimotedsu.app
                         DSUPacketBuilder.WritePortsInfoResponse(responseBuffer, 0, _macAddress, _cachedBatteryStatus, _serverId);
                         await udpClient.SendAsync(responseBuffer, responseBuffer.Length, receivedResult.RemoteEndPoint);
                     }
+                    else if (messageType == 0x100002)
+                    {
+                        _subscribers[receivedResult.RemoteEndPoint] = DateTime.UtcNow;
+                    }
                 }
             }
             catch (OperationCanceledException) { }
             catch (SocketException) { }
+            catch (Exception) { }
         }
 
         private async Task BroadcastLoop(UdpClient udpClient, CancellationToken token)
         {
             byte[] responseBuffer = new byte[100];
+
             try
             {
                 while (!token.IsCancellationRequested)
                 {
-                    var client = _connectedClient;
-                    if (client != null)
+                    // Expire subscribers older than 5 seconds (standard Cemuhook lease timeout)
+                    var now = DateTime.UtcNow;
+                    foreach (var kvp in _subscribers)
+                    {
+                        if ((now - kvp.Value).TotalSeconds > 5.0)
+                        {
+                            _subscribers.TryRemove(kvp.Key, out _);
+                        }
+                    }
+
+                    var activeClients = _subscribers.Keys.ToArray();
+
+                    if (activeClients.Length > 0)
                     {
                         _packetNumber++;
                         ulong timestamp = (ulong)(_stopwatch.ElapsedTicks * 1000000 / System.Diagnostics.Stopwatch.Frequency);
+
                         DSUPacketBuilder.WriteControllerDataResponse(
                             responseBuffer,
                             0,
@@ -166,16 +186,22 @@ namespace wiimotedsu.app
                             _gyroP, _gyroY, _gyroR,
                             _buttons1, _buttons2, _homeButton, _touchButton,
                             _macAddress, _cachedBatteryStatus, _serverId);
-                        await udpClient.SendAsync(responseBuffer, responseBuffer.Length, client);
+
+                        foreach (var client in activeClients)
+                        {
+                            try
+                            {
+                                await udpClient.SendAsync(responseBuffer, responseBuffer.Length, client);
+                            }
+                            catch { }
+                        }
                     }
+
                     await Task.Delay(16, token);
                 }
             }
             catch (OperationCanceledException) { }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine("BroadcastLoop exception: " + ex.Message);
-            }
+            catch (Exception) { }
         }
 
         private string GetLocalIPAddress()
@@ -311,42 +337,42 @@ namespace wiimotedsu.app
 
         // Utility Handlers
         private void OnBtnRecenterPressed(object? sender, EventArgs e) { TriggerHaptic(); _touchButton = 1; }
-        private void OnBtnRecenterReleased(object? sender, EventArgs e) => _touchButton = 0;
+        private void OnBtnRecenterReleased(object? sender, EventArgs e) { _touchButton = 0; }
 
         // D-Pad Handlers (Byte 16: Up=0x10, Down=0x40, Left=0x80, Right=0x20)
         private void OnDpadUpPressed(object? sender, EventArgs e) { TriggerHaptic(); _buttons1 |= 0x10; }
-        private void OnDpadUpReleased(object? sender, EventArgs e) => _buttons1 &= unchecked((byte)~0x10);
+        private void OnDpadUpReleased(object? sender, EventArgs e) { _buttons1 &= unchecked((byte)~0x10); }
 
         private void OnDpadDownPressed(object? sender, EventArgs e) { TriggerHaptic(); _buttons1 |= 0x40; }
-        private void OnDpadDownReleased(object? sender, EventArgs e) => _buttons1 &= unchecked((byte)~0x40);
+        private void OnDpadDownReleased(object? sender, EventArgs e) { _buttons1 &= unchecked((byte)~0x40); }
 
         private void OnDpadLeftPressed(object? sender, EventArgs e) { TriggerHaptic(); _buttons1 |= 0x80; }
-        private void OnDpadLeftReleased(object? sender, EventArgs e) => _buttons1 &= unchecked((byte)~0x80);
+        private void OnDpadLeftReleased(object? sender, EventArgs e) { _buttons1 &= unchecked((byte)~0x80); }
 
         private void OnDpadRightPressed(object? sender, EventArgs e) { TriggerHaptic(); _buttons1 |= 0x20; }
-        private void OnDpadRightReleased(object? sender, EventArgs e) => _buttons1 &= unchecked((byte)~0x20);
+        private void OnDpadRightReleased(object? sender, EventArgs e) { _buttons1 &= unchecked((byte)~0x20); }
 
         // Action Buttons Handlers (Byte 17: A=0x40 (Cross), B=0x80 (Square), 1=0x10 (Triangle), 2=0x20 (Circle))
         private void OnBtnAPressed(object? sender, EventArgs e) { TriggerHaptic(); _buttons2 |= 0x40; }
-        private void OnBtnAReleased(object? sender, EventArgs e) => _buttons2 &= unchecked((byte)~0x40);
+        private void OnBtnAReleased(object? sender, EventArgs e) { _buttons2 &= unchecked((byte)~0x40); }
 
         private void OnBtnBPressed(object? sender, EventArgs e) { TriggerHaptic(); _buttons2 |= 0x80; }
-        private void OnBtnBReleased(object? sender, EventArgs e) => _buttons2 &= unchecked((byte)~0x80);
+        private void OnBtnBReleased(object? sender, EventArgs e) { _buttons2 &= unchecked((byte)~0x80); }
 
         private void OnBtn1Pressed(object? sender, EventArgs e) { TriggerHaptic(); _buttons2 |= 0x10; }
-        private void OnBtn1Released(object? sender, EventArgs e) => _buttons2 &= unchecked((byte)~0x10);
+        private void OnBtn1Released(object? sender, EventArgs e) { _buttons2 &= unchecked((byte)~0x10); }
 
         private void OnBtn2Pressed(object? sender, EventArgs e) { TriggerHaptic(); _buttons2 |= 0x20; }
-        private void OnBtn2Released(object? sender, EventArgs e) => _buttons2 &= unchecked((byte)~0x20);
+        private void OnBtn2Released(object? sender, EventArgs e) { _buttons2 &= unchecked((byte)~0x20); }
 
         // Navigation Buttons Handlers (+ = 0x08, - = 0x01 on Byte 16; Home = 0x01 on Byte 18)
         private void OnBtnPlusPressed(object? sender, EventArgs e) { TriggerHaptic(); _buttons1 |= 0x08; }
-        private void OnBtnPlusReleased(object? sender, EventArgs e) => _buttons1 &= unchecked((byte)~0x08);
+        private void OnBtnPlusReleased(object? sender, EventArgs e) { _buttons1 &= unchecked((byte)~0x08); }
 
         private void OnBtnMinusPressed(object? sender, EventArgs e) { TriggerHaptic(); _buttons1 |= 0x01; }
-        private void OnBtnMinusReleased(object? sender, EventArgs e) => _buttons1 &= unchecked((byte)~0x01);
+        private void OnBtnMinusReleased(object? sender, EventArgs e) { _buttons1 &= unchecked((byte)~0x01); }
 
         private void OnBtnHomePressed(object? sender, EventArgs e) { TriggerHaptic(); _homeButton = 1; }
-        private void OnBtnHomeReleased(object? sender, EventArgs e) => _homeButton = 0;
+        private void OnBtnHomeReleased(object? sender, EventArgs e) { _homeButton = 0; }
     }
 }
