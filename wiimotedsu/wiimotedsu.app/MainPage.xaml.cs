@@ -1,10 +1,8 @@
 #if ANDROID
-using Android.Content;
-using Android.Net.Wifi;
 #endif
-
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using wiimotedsu.core;
 
@@ -12,45 +10,33 @@ namespace wiimotedsu.app
 {
     public partial class MainPage : ContentPage
     {
+        private const byte BatteryStatusFull = 0x05;
+        private const float RadToDeg = (float)(180.0 / Math.PI);
+        private static readonly byte[] _macAddress = new byte[] { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55 };
+
         private bool _isServerRunning = false;
         private uint _packetNumber = 0;
         private readonly uint _serverId = (uint)Random.Shared.Next(1, int.MaxValue);
-        private readonly byte[] _macAddress = GetOrCreatePersistentMacAddress();
         private CancellationTokenSource? _udpCts;
-        private System.Diagnostics.Stopwatch _stopwatch = new System.Diagnostics.Stopwatch();
+        private readonly System.Diagnostics.Stopwatch _stopwatch = new();
+
         private float _accX, _accY, _accZ, _gyroP, _gyroY, _gyroR;
         private volatile byte _buttons1 = 0;
         private volatile byte _buttons2 = 0;
         private volatile byte _homeButton = 0;
         private volatile byte _touchButton = 0;
-        private byte _cachedBatteryStatus = 0x05;
         private readonly ConcurrentDictionary<System.Net.IPEndPoint, DateTime> _subscribers = new();
 
-        // === STATE & COMMUNICATION ===
         public MainPage()
         {
             InitializeComponent();
-
             IpLabel.Text = $"IP Address: {GetLocalIPAddress()}";
         }
 
         protected override void OnAppearing()
         {
             base.OnAppearing();
-            _cachedBatteryStatus = GetBatteryStatus();
             StartServer();
-
-            if (Window != null)
-            {
-                Window.Deactivated -= Window_Deactivated;
-                Window.Deactivated += Window_Deactivated;
-                Window.Activated -= Window_Activated;
-                Window.Activated += Window_Activated;
-                Window.Stopped -= Window_Stopped;
-                Window.Stopped += Window_Stopped;
-                Window.Resumed -= Window_Resumed;
-                Window.Resumed += Window_Resumed;
-            }
         }
 
         protected override void OnDisappearing()
@@ -59,28 +45,12 @@ namespace wiimotedsu.app
             StopServer();
         }
 
-        private void Window_Deactivated(object? sender, EventArgs e) => StopServer();
-        private void Window_Activated(object? sender, EventArgs e) => StartServer();
-        private void Window_Stopped(object? sender, EventArgs e) => StopServer();
-        private void Window_Resumed(object? sender, EventArgs e) => StartServer();
-
         private void StartServer()
         {
             if (_isServerRunning) return;
             _isServerRunning = true;
 
-            try
-            {
-                DeviceDisplay.Current.KeepScreenOn = true;
-            }
-            catch { }
-
-            try
-            {
-                Battery.Default.BatteryInfoChanged += Battery_BatteryInfoChanged;
-                _cachedBatteryStatus = GetBatteryStatus();
-            }
-            catch { }
+            try { DeviceDisplay.Current.KeepScreenOn = true; } catch { }
 
             StartSensors();
             _stopwatch.Restart();
@@ -94,27 +64,12 @@ namespace wiimotedsu.app
             if (!_isServerRunning) return;
             _isServerRunning = false;
 
-            try
-            {
-                DeviceDisplay.Current.KeepScreenOn = false;
-            }
-            catch { }
-
-            try
-            {
-                Battery.Default.BatteryInfoChanged -= Battery_BatteryInfoChanged;
-            }
-            catch { }
+            try { DeviceDisplay.Current.KeepScreenOn = false; } catch { }
 
             StopSensors();
             _stopwatch.Stop();
             _udpCts?.Cancel();
             _subscribers.Clear();
-        }
-
-        private void Battery_BatteryInfoChanged(object? sender, BatteryInfoChangedEventArgs e)
-        {
-            _cachedBatteryStatus = GetBatteryStatus();
         }
 
         private async Task StartUdpServer(CancellationToken token)
@@ -127,6 +82,8 @@ namespace wiimotedsu.app
                 while (!token.IsCancellationRequested)
                 {
                     var receivedResult = await udpClient.ReceiveAsync(token);
+                    if (receivedResult.Buffer.Length < 20) continue;
+
                     var messageType = BinaryPrimitives.ReadUInt32LittleEndian(receivedResult.Buffer.AsSpan(16, 4));
 
                     if (messageType == 0x100000)
@@ -138,7 +95,7 @@ namespace wiimotedsu.app
                     else if (messageType == 0x100001)
                     {
                         byte[] responseBuffer = new byte[32];
-                        DSUPacketBuilder.WritePortsInfoResponse(responseBuffer, 0, _macAddress, _cachedBatteryStatus, _serverId);
+                        DSUPacketBuilder.WritePortsInfoResponse(responseBuffer, 0, _macAddress, BatteryStatusFull, _serverId);
                         await udpClient.SendAsync(responseBuffer, responseBuffer.Length, receivedResult.RemoteEndPoint);
                     }
                     else if (messageType == 0x100002)
@@ -160,7 +117,6 @@ namespace wiimotedsu.app
             {
                 while (!token.IsCancellationRequested)
                 {
-                    // Expire subscribers older than 5 seconds (standard Cemuhook lease timeout)
                     var now = DateTime.UtcNow;
                     foreach (var kvp in _subscribers)
                     {
@@ -185,7 +141,7 @@ namespace wiimotedsu.app
                             _accX, _accY, _accZ,
                             _gyroP, _gyroY, _gyroR,
                             _buttons1, _buttons2, _homeButton, _touchButton,
-                            _macAddress, _cachedBatteryStatus, _serverId);
+                            _macAddress, BatteryStatusFull, _serverId);
 
                         foreach (var client in activeClients)
                         {
@@ -204,91 +160,42 @@ namespace wiimotedsu.app
             catch (Exception) { }
         }
 
-        private string GetLocalIPAddress()
-        {
-#if ANDROID
-        try 
-        {
-            var context = Android.App.Application.Context;
-
-            var wifiManager = (WifiManager)context.GetSystemService(Context.WifiService);
-
-            int ipInt = wifiManager.ConnectionInfo.IpAddress;
-
-            if (ipInt != 0)
-            {
-                var ipBytes = BitConverter.GetBytes(ipInt);
-                var ipAddress = new System.Net.IPAddress(ipBytes);
-                return ipAddress.ToString();
-            }
-        }
-        catch
-        {
-
-        }
-#endif
-            return "127.0.0.1";
-        }
-
-        private static byte[] GetOrCreatePersistentMacAddress()
-        {
-            string savedMac = Preferences.Default.Get("device_mac", string.Empty);
-            if (!string.IsNullOrEmpty(savedMac) && savedMac.Length == 12)
-            {
-                try
-                {
-                    return Convert.FromHexString(savedMac);
-                }
-                catch { }
-            }
-
-            byte[] newMac = new byte[6];
-            Random.Shared.NextBytes(newMac);
-            newMac[0] &= 0xFE; // Unicast
-
-            Preferences.Default.Set("device_mac", Convert.ToHexString(newMac));
-            return newMac;
-        }
-
-        private static byte GetBatteryStatus()
+        private static string GetLocalIPAddress()
         {
             try
             {
-                if (Battery.Default.State == BatteryState.Charging)
-                    return 0xEE; // Charging
-                if (Battery.Default.State == BatteryState.Full)
-                    return 0xEF; // Charged
+                foreach (var netInterface in NetworkInterface.GetAllNetworkInterfaces())
+                {
+                    if (netInterface.OperationalStatus != OperationalStatus.Up)
+                        continue;
 
-                double level = Battery.Default.ChargeLevel;
-                if (level > 0.9) return 0x05; // Full
-                if (level > 0.6) return 0x04; // High
-                if (level > 0.3) return 0x03; // Medium
-                if (level > 0.1) return 0x02; // Low
-                if (level >= 0.0) return 0x01; // Dying
+                    var ipProps = netInterface.GetIPProperties();
+                    foreach (var addr in ipProps.UnicastAddresses)
+                    {
+                        if (addr.Address.AddressFamily == AddressFamily.InterNetwork &&
+                            !System.Net.IPAddress.IsLoopback(addr.Address))
+                        {
+                            return addr.Address.ToString();
+                        }
+                    }
+                }
             }
             catch { }
-
-            return 0x00; // Not applicable
+            return "127.0.0.1";
         }
 
         private void StartSensors()
         {
-            if (Accelerometer.Default.IsSupported)
+            if (Accelerometer.Default.IsSupported && !Accelerometer.Default.IsMonitoring)
             {
-                if (!Accelerometer.Default.IsMonitoring) 
-                {
-                    Accelerometer.Default.ReadingChanged += Accelerometer_ReadingChanged;
-                    Accelerometer.Default.Start(SensorSpeed.Game);
-                }
+                Accelerometer.Default.ReadingChanged += Accelerometer_ReadingChanged;
+                Accelerometer.Default.Start(SensorSpeed.Game);
             }
 
-            if (Gyroscope.Default.IsSupported)
+            if (Gyroscope.Default.IsSupported && !Gyroscope.Default.IsMonitoring)
             {
-                if (!Gyroscope.Default.IsMonitoring)
-                {
-                    Gyroscope.Default.ReadingChanged += Gyroscope_ReadingChanged;
-                    Gyroscope.Default.Start(SensorSpeed.Game);
-                }
+                Gyroscope.Default.ReadingChanged += Gyroscope_ReadingChanged;
+                Gyroscope.Default.Start(SensorSpeed.Game);
             }
         }
 
@@ -308,71 +215,70 @@ namespace wiimotedsu.app
 
         private void Accelerometer_ReadingChanged(object? sender, AccelerometerChangedEventArgs e)
         {
-            // Accelerometer Y and Z axes are swapped to match the expected orientation of the DSU protocol. The values are also negated to match the expected direction.
-            _accX = -(float)(e.Reading.Acceleration.X);
-            _accY = -(float)(e.Reading.Acceleration.Z);
-            _accZ = (float)(e.Reading.Acceleration.Y);
+            _accX = -(float)e.Reading.Acceleration.X;
+            _accY = -(float)e.Reading.Acceleration.Z;
+            _accZ = (float)e.Reading.Acceleration.Y;
         }
 
         private void Gyroscope_ReadingChanged(object? sender, GyroscopeChangedEventArgs e)
         {
-            // DSU expects gyro data in degrees per second, but the Gyroscope sensor provides it in radians per second so we need to convert it
-            // Gyroscope Y and Z axes are swapped to match the expected orientation of the DSU protocol. The value of Z is also negated to match the expected direction.
-            _gyroP = (float)(e.Reading.AngularVelocity.X * (180.0 / Math.PI));
-            _gyroY = -(float)(e.Reading.AngularVelocity.Z * (180.0 / Math.PI));
-            _gyroR = (float)(e.Reading.AngularVelocity.Y * (180.0 / Math.PI));
+            _gyroP = (float)e.Reading.AngularVelocity.X * RadToDeg;
+            _gyroY = -(float)e.Reading.AngularVelocity.Z * RadToDeg;
+            _gyroR = (float)e.Reading.AngularVelocity.Y * RadToDeg;
         }
 
-        private void TriggerHaptic()
+        private static void TriggerHaptic()
         {
-            try
+            try { HapticFeedback.Default.Perform(HapticFeedbackType.Click); } catch { }
+        }
+
+        // Unified Button Event Handlers
+        private void OnButtonPressed(object? sender, EventArgs e)
+        {
+            if (sender is Button btn && btn.CommandParameter is string key)
             {
-                HapticFeedback.Default.Perform(HapticFeedbackType.Click);
-            }
-            catch
-            {
-                // Fallback / ignore on unsupported platforms
+                TriggerHaptic();
+                SetButtonState(key, true);
             }
         }
 
-        // Utility Handlers
-        private void OnBtnRecenterPressed(object? sender, EventArgs e) { TriggerHaptic(); _touchButton = 1; }
-        private void OnBtnRecenterReleased(object? sender, EventArgs e) { _touchButton = 0; }
+        private void OnButtonReleased(object? sender, EventArgs e)
+        {
+            if (sender is Button btn && btn.CommandParameter is string key)
+            {
+                SetButtonState(key, false);
+            }
+        }
 
-        // D-Pad Handlers (Byte 16: Up=0x10, Down=0x40, Left=0x80, Right=0x20)
-        private void OnDpadUpPressed(object? sender, EventArgs e) { TriggerHaptic(); _buttons1 |= 0x10; }
-        private void OnDpadUpReleased(object? sender, EventArgs e) { _buttons1 &= unchecked((byte)~0x10); }
+        private void SetButtonState(string key, bool isPressed)
+        {
+            switch (key)
+            {
+                case "Up":       UpdateButtons1(0x10, isPressed); break;
+                case "Down":     UpdateButtons1(0x40, isPressed); break;
+                case "Left":     UpdateButtons1(0x80, isPressed); break;
+                case "Right":    UpdateButtons1(0x20, isPressed); break;
+                case "Plus":     UpdateButtons1(0x08, isPressed); break;
+                case "Minus":    UpdateButtons1(0x01, isPressed); break;
+                case "A":        UpdateButtons2(0x40, isPressed); break;
+                case "B":        UpdateButtons2(0x80, isPressed); break;
+                case "1":        UpdateButtons2(0x10, isPressed); break;
+                case "2":        UpdateButtons2(0x20, isPressed); break;
+                case "Home":     _homeButton = (byte)(isPressed ? 1 : 0); break;
+                case "Recenter": _touchButton = (byte)(isPressed ? 1 : 0); break;
+            }
+        }
 
-        private void OnDpadDownPressed(object? sender, EventArgs e) { TriggerHaptic(); _buttons1 |= 0x40; }
-        private void OnDpadDownReleased(object? sender, EventArgs e) { _buttons1 &= unchecked((byte)~0x40); }
+        private void UpdateButtons1(byte mask, bool set)
+        {
+            if (set) _buttons1 |= mask;
+            else _buttons1 &= unchecked((byte)~mask);
+        }
 
-        private void OnDpadLeftPressed(object? sender, EventArgs e) { TriggerHaptic(); _buttons1 |= 0x80; }
-        private void OnDpadLeftReleased(object? sender, EventArgs e) { _buttons1 &= unchecked((byte)~0x80); }
-
-        private void OnDpadRightPressed(object? sender, EventArgs e) { TriggerHaptic(); _buttons1 |= 0x20; }
-        private void OnDpadRightReleased(object? sender, EventArgs e) { _buttons1 &= unchecked((byte)~0x20); }
-
-        // Action Buttons Handlers (Byte 17: A=0x40 (Cross), B=0x80 (Square), 1=0x10 (Triangle), 2=0x20 (Circle))
-        private void OnBtnAPressed(object? sender, EventArgs e) { TriggerHaptic(); _buttons2 |= 0x40; }
-        private void OnBtnAReleased(object? sender, EventArgs e) { _buttons2 &= unchecked((byte)~0x40); }
-
-        private void OnBtnBPressed(object? sender, EventArgs e) { TriggerHaptic(); _buttons2 |= 0x80; }
-        private void OnBtnBReleased(object? sender, EventArgs e) { _buttons2 &= unchecked((byte)~0x80); }
-
-        private void OnBtn1Pressed(object? sender, EventArgs e) { TriggerHaptic(); _buttons2 |= 0x10; }
-        private void OnBtn1Released(object? sender, EventArgs e) { _buttons2 &= unchecked((byte)~0x10); }
-
-        private void OnBtn2Pressed(object? sender, EventArgs e) { TriggerHaptic(); _buttons2 |= 0x20; }
-        private void OnBtn2Released(object? sender, EventArgs e) { _buttons2 &= unchecked((byte)~0x20); }
-
-        // Navigation Buttons Handlers (+ = 0x08, - = 0x01 on Byte 16; Home = 0x01 on Byte 18)
-        private void OnBtnPlusPressed(object? sender, EventArgs e) { TriggerHaptic(); _buttons1 |= 0x08; }
-        private void OnBtnPlusReleased(object? sender, EventArgs e) { _buttons1 &= unchecked((byte)~0x08); }
-
-        private void OnBtnMinusPressed(object? sender, EventArgs e) { TriggerHaptic(); _buttons1 |= 0x01; }
-        private void OnBtnMinusReleased(object? sender, EventArgs e) { _buttons1 &= unchecked((byte)~0x01); }
-
-        private void OnBtnHomePressed(object? sender, EventArgs e) { TriggerHaptic(); _homeButton = 1; }
-        private void OnBtnHomeReleased(object? sender, EventArgs e) { _homeButton = 0; }
+        private void UpdateButtons2(byte mask, bool set)
+        {
+            if (set) _buttons2 |= mask;
+            else _buttons2 &= unchecked((byte)~mask);
+        }
     }
 }

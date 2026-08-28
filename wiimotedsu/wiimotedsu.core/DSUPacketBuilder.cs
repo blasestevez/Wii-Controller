@@ -156,31 +156,23 @@ namespace wiimotedsu.core
             // byte 19 "Touch Button (0 or 1)"
             buffer[39] = touchButton;
 
-            // bytes 20-23 "Left stick X, Left stick Y, Right stick X, Right stick Y"
-            byte leftStickX = 128; // Centered
-            buffer[40] = leftStickX;
+            // bytes 20-23 (offset 40-43) Sticks centered to 128 (neutral)
+            buffer[40] = 128;
+            buffer[41] = 128;
+            buffer[42] = 128;
+            buffer[43] = 128;
 
-            byte leftStickY = 128; // Centered
-            buffer[41] = leftStickY;
-
-            byte rightStickX = 128; // Centered
-            buffer[42] = rightStickX;
-
-            byte rightStickY = 128; // Centered
-            buffer[43] = rightStickY;
-
-            // bytes 24-35 (offset 44-55) "Analog D-Pad, Analog buttons (0=released, 255=pressed)"
-            // Analog D-Pad: Left, Down, Right, Up
+            // bytes 24-35 (offset 44-55) Analog D-Pad and Buttons (0x00=released, 0xFF=pressed)
+            // Emulators like Dolphin/Cemu and PadTest require these analog fields to detect button presses
             buffer[44] = (byte)((buttons1 & 0x80) != 0 ? 0xFF : 0x00); // D-Pad Left
             buffer[45] = (byte)((buttons1 & 0x40) != 0 ? 0xFF : 0x00); // D-Pad Down
             buffer[46] = (byte)((buttons1 & 0x20) != 0 ? 0xFF : 0x00); // D-Pad Right
             buffer[47] = (byte)((buttons1 & 0x10) != 0 ? 0xFF : 0x00); // D-Pad Up
 
-            // Analog buttons: Y/Square, B/Cross, A/Circle, X/Triangle, R1, L1, R2, L2
-            buffer[48] = (byte)((buttons2 & 0x80) != 0 ? 0xFF : 0x00); // Y / Square
-            buffer[49] = (byte)((buttons2 & 0x40) != 0 ? 0xFF : 0x00); // B / Cross (or Circle)
-            buffer[50] = (byte)((buttons2 & 0x20) != 0 ? 0xFF : 0x00); // A / Circle (or Cross)
-            buffer[51] = (byte)((buttons2 & 0x10) != 0 ? 0xFF : 0x00); // X / Triangle
+            buffer[48] = (byte)((buttons2 & 0x80) != 0 ? 0xFF : 0x00); // Y / Square / B
+            buffer[49] = (byte)((buttons2 & 0x40) != 0 ? 0xFF : 0x00); // B / Cross / A
+            buffer[50] = (byte)((buttons2 & 0x20) != 0 ? 0xFF : 0x00); // A / Circle / 2
+            buffer[51] = (byte)((buttons2 & 0x10) != 0 ? 0xFF : 0x00); // X / Triangle / 1
             buffer[52] = (byte)((buttons2 & 0x08) != 0 ? 0xFF : 0x00); // R1
             buffer[53] = (byte)((buttons2 & 0x04) != 0 ? 0xFF : 0x00); // L1
             buffer[54] = (byte)((buttons2 & 0x02) != 0 ? 0xFF : 0x00); // R2

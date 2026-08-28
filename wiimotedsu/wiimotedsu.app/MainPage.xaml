@@ -35,10 +35,10 @@
                 HorizontalOptions="Center"
                 RowDefinitions="60,60,60"
                 ColumnDefinitions="60,60,60">
-                <Button Grid.Row="0" Grid.Column="1" Text="▲" FontSize="20" BackgroundColor="#181818" BorderColor="#2E2E2E" BorderWidth="1" CornerRadius="8" TextColor="#FFFFFF" Pressed="OnDpadUpPressed" Released="OnDpadUpReleased" />
-                <Button Grid.Row="1" Grid.Column="0" Text="◀" FontSize="20" BackgroundColor="#181818" BorderColor="#2E2E2E" BorderWidth="1" CornerRadius="8" TextColor="#FFFFFF" Pressed="OnDpadLeftPressed" Released="OnDpadLeftReleased" />
-                <Button Grid.Row="1" Grid.Column="2" Text="▶" FontSize="20" BackgroundColor="#181818" BorderColor="#2E2E2E" BorderWidth="1" CornerRadius="8" TextColor="#FFFFFF" Pressed="OnDpadRightPressed" Released="OnDpadRightReleased" />
-                <Button Grid.Row="2" Grid.Column="1" Text="▼" FontSize="20" BackgroundColor="#181818" BorderColor="#2E2E2E" BorderWidth="1" CornerRadius="8" TextColor="#FFFFFF" Pressed="OnDpadDownPressed" Released="OnDpadDownReleased" />
+                <Button Grid.Row="0" Grid.Column="1" Text="▲" FontSize="20" BackgroundColor="#181818" BorderColor="#2E2E2E" BorderWidth="1" CornerRadius="8" TextColor="#FFFFFF" CommandParameter="Up" Pressed="OnButtonPressed" Released="OnButtonReleased" />
+                <Button Grid.Row="1" Grid.Column="0" Text="◀" FontSize="20" BackgroundColor="#181818" BorderColor="#2E2E2E" BorderWidth="1" CornerRadius="8" TextColor="#FFFFFF" CommandParameter="Left" Pressed="OnButtonPressed" Released="OnButtonReleased" />
+                <Button Grid.Row="1" Grid.Column="2" Text="▶" FontSize="20" BackgroundColor="#181818" BorderColor="#2E2E2E" BorderWidth="1" CornerRadius="8" TextColor="#FFFFFF" CommandParameter="Right" Pressed="OnButtonPressed" Released="OnButtonReleased" />
+                <Button Grid.Row="2" Grid.Column="1" Text="▼" FontSize="20" BackgroundColor="#181818" BorderColor="#2E2E2E" BorderWidth="1" CornerRadius="8" TextColor="#FFFFFF" CommandParameter="Down" Pressed="OnButtonPressed" Released="OnButtonReleased" />
             </Grid>
 
             <!-- 2. Gatillo B & Recenter (Barra ancha a todo el ancho) -->
@@ -54,8 +54,9 @@
                     BorderWidth="1.5"
                     CornerRadius="10"
                     TextColor="#FFFFFF"
-                    Pressed="OnBtnBPressed"
-                    Released="OnBtnBReleased" />
+                    CommandParameter="B"
+                    Pressed="OnButtonPressed"
+                    Released="OnButtonReleased" />
 
                 <Button
                     Grid.Column="1"
@@ -67,8 +68,9 @@
                     BorderWidth="1"
                     CornerRadius="10"
                     TextColor="#888888"
-                    Pressed="OnBtnRecenterPressed"
-                    Released="OnBtnRecenterReleased" />
+                    CommandParameter="Recenter"
+                    Pressed="OnButtonPressed"
+                    Released="OnButtonReleased" />
             </Grid>
 
             <!-- 3. Botón A (Grande y centrado estilo Wiimote) -->
@@ -84,20 +86,21 @@
                 BorderWidth="2"
                 TextColor="#FFFFFF" 
                 HorizontalOptions="Center"
-                Pressed="OnBtnAPressed" 
-                Released="OnBtnAReleased" />
+                CommandParameter="A"
+                Pressed="OnButtonPressed" 
+                Released="OnButtonReleased" />
 
             <!-- 4. Fila Central: -, HOME, + -->
             <Grid ColumnDefinitions="60,75,60" ColumnSpacing="15" HorizontalOptions="Center">
-                <Button Grid.Column="0" Text="-" WidthRequest="60" HeightRequest="42" FontSize="20" FontAttributes="Bold" BackgroundColor="#181818" BorderColor="#2E2E2E" BorderWidth="1" CornerRadius="21" TextColor="#CCCCCC" Pressed="OnBtnMinusPressed" Released="OnBtnMinusReleased" />
-                <Button Grid.Column="1" Text="🏠" WidthRequest="75" HeightRequest="42" FontSize="16" BackgroundColor="#06223E" BorderColor="#007ACC" BorderWidth="1.5" CornerRadius="21" TextColor="#29B6F6" Pressed="OnBtnHomePressed" Released="OnBtnHomeReleased" />
-                <Button Grid.Column="2" Text="+" WidthRequest="60" HeightRequest="42" FontSize="20" FontAttributes="Bold" BackgroundColor="#181818" BorderColor="#2E2E2E" BorderWidth="1" CornerRadius="21" TextColor="#CCCCCC" Pressed="OnBtnPlusPressed" Released="OnBtnPlusReleased" />
+                <Button Grid.Column="0" Text="-" WidthRequest="60" HeightRequest="42" FontSize="20" FontAttributes="Bold" BackgroundColor="#181818" BorderColor="#2E2E2E" BorderWidth="1" CornerRadius="21" TextColor="#CCCCCC" CommandParameter="Minus" Pressed="OnButtonPressed" Released="OnButtonReleased" />
+                <Button Grid.Column="1" Text="🏠" WidthRequest="75" HeightRequest="42" FontSize="16" BackgroundColor="#06223E" BorderColor="#007ACC" BorderWidth="1.5" CornerRadius="21" TextColor="#29B6F6" CommandParameter="Home" Pressed="OnButtonPressed" Released="OnButtonReleased" />
+                <Button Grid.Column="2" Text="+" WidthRequest="60" HeightRequest="42" FontSize="20" FontAttributes="Bold" BackgroundColor="#181818" BorderColor="#2E2E2E" BorderWidth="1" CornerRadius="21" TextColor="#CCCCCC" CommandParameter="Plus" Pressed="OnButtonPressed" Released="OnButtonReleased" />
             </Grid>
 
             <!-- 5. Botones 1 y 2 en VERTICAL -->
             <VerticalStackLayout Spacing="10" HorizontalOptions="Center">
-                <Button Text="1" WidthRequest="60" HeightRequest="60" CornerRadius="30" FontSize="22" FontAttributes="Bold" BackgroundColor="#181818" BorderColor="#333333" BorderWidth="1.5" TextColor="#FFFFFF" Pressed="OnBtn1Pressed" Released="OnBtn1Released" />
-                <Button Text="2" WidthRequest="60" HeightRequest="60" CornerRadius="30" FontSize="22" FontAttributes="Bold" BackgroundColor="#181818" BorderColor="#333333" BorderWidth="1.5" TextColor="#FFFFFF" Pressed="OnBtn2Pressed" Released="OnBtn2Released" />
+                <Button Text="1" WidthRequest="60" HeightRequest="60" CornerRadius="30" FontSize="22" FontAttributes="Bold" BackgroundColor="#181818" BorderColor="#333333" BorderWidth="1.5" TextColor="#FFFFFF" CommandParameter="1" Pressed="OnButtonPressed" Released="OnButtonReleased" />
+                <Button Text="2" WidthRequest="60" HeightRequest="60" CornerRadius="30" FontSize="22" FontAttributes="Bold" BackgroundColor="#181818" BorderColor="#333333" BorderWidth="1.5" TextColor="#FFFFFF" CommandParameter="2" Pressed="OnButtonPressed" Released="OnButtonReleased" />
             </VerticalStackLayout>
 
         </VerticalStackLayout>
