@@ -20,14 +20,17 @@ The app reads your phone's accelerometer and gyroscope, exposes on-screen Wiimot
 2. In Dolphin, go to **Controllers → Alternate Input Sources** and point to your phone's IP
 3. Dolphin requests data via the DSU protocol; the app responds with sensor + button state at ~60 Hz
 
+## 📥 Download
+
+Download the latest pre-compiled APK from the [Releases](https://github.com/blasestevez/dsucontroller/releases/latest) page and install it on your Android device.
+
 ## Features
 
 - **Full motion controls** — accelerometer and gyroscope mapped to DSU spec units (g's, °/s)
 - **On-screen Wiimote buttons** — D-pad, A, B trigger, 1, 2, +, -, Home, and recenter
+- **Multi-client UDP support** — handles multiple emulators or concurrent data/discovery subscriptions without dropping packets
 - **Haptic feedback** on button press
-- **Auto battery reporting** — maps phone battery level to DSU battery status
-- **Persistent device ID** — generates a MAC address once and persists it across sessions
-- **Keep screen on** while serving
+- **Keep screen on** while the controller server is active
 
 ## Requirements
 
